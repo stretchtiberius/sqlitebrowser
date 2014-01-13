@@ -24,7 +24,6 @@
 # include <stdio.h>
 #endif
 #include <cstdio>
-#include <strings.h>
 
 #include <antlr/TokenStream.hpp>
 #include <antlr/RecognitionException.hpp>
