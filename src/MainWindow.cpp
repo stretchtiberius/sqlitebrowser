@@ -95,8 +95,9 @@ void MainWindow::init()
     // Create popup menus
     popupTableMenu = new QMenu(this);
     popupTableMenu->addAction(ui->editModifyTableAction);
-    popupTableMenu->addSeparator();
     popupTableMenu->addAction(ui->editDeleteObjectAction);
+    popupTableMenu->addSeparator();
+    popupTableMenu->addAction(ui->actionExportCsvPopup);
 
     // Set state of checkable menu actions
     ui->viewMenu->insertAction(ui->viewDBToolbarAction, ui->dockLog->toggleViewAction());
@@ -648,6 +649,12 @@ void MainWindow::executeQuery()
         if (sql3status == SQLITE_OK){
             sql3status = sqlite3_step(vm);
             sqlite3_finalize(vm);
+
+            // SQLite returns SQLITE_DONE when a valid SELECT statement was executed but returned no results. To run into the branch that updates
+            // the status message and the table view anyway manipulate the status value here.
+            if(queryPart.trimmed().startsWith("SELECT", Qt::CaseInsensitive) && sql3status == SQLITE_DONE)
+                sql3status = SQLITE_ROW;
+
             switch(sql3status)
             {
             case SQLITE_ROW:
@@ -732,7 +739,15 @@ void MainWindow::importTableFromCSV()
 
 void MainWindow::exportTableToCSV()
 {
-    ExportCsvDialog dialog(&db, this);
+    // Get the current table name if we are in the Browse Data tab
+    QString current_table;
+    if(ui->mainTab->currentIndex() == 0)
+        current_table = ui->dbTreeWidget->model()->data(ui->dbTreeWidget->currentIndex().sibling(ui->dbTreeWidget->currentIndex().row(), 0)).toString();
+    else if(ui->mainTab->currentIndex() == 1)
+        current_table = ui->comboBrowseTable->currentText();
+
+    // Open dialog
+    ExportCsvDialog dialog(&db, this, "", current_table);
     dialog.exec();
 }
 
@@ -896,6 +911,7 @@ void MainWindow::changeTreeSelection()
     } else if(type == "view" || type == "trigger" || type == "index") {
         ui->editDeleteObjectAction->setEnabled(true);
     }
+    ui->actionExportCsvPopup->setEnabled(type == "table" || type == "view");
 }
 
 void MainWindow::openRecentFile()
